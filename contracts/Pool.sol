@@ -22,6 +22,7 @@ contract Pool is Initializable, PoolModel, NonReentrancy, OwnableUpgradeable {
     uint256 constant RATIO_BASE = 1e6;
 
     uint256 constant MIN_WAIT_DAYS = 6;
+    uint256 constant MIN_GAP_DAYS = 1;
     uint256 constant MIN_OPEN_DAYS = 1;
 
     event Deposit(
@@ -46,12 +47,24 @@ contract Pool is Initializable, PoolModel, NonReentrancy, OwnableUpgradeable {
 
     // ** Initialize.
 
-    constructor() public {
-        initialize(address(0));
+    function initialize(address baseToken_, bool isTest_) public initializer {
+        baseToken = baseToken_;
+        isTest = isTest_;
     }
 
-    function initialize(address baseToken_) public initializer {
-        baseToken = baseToken_;
+    modifier onlyTest() {
+        require(isTest, "Only enabled in test environment");
+        _;
+    }
+
+    // ** Time related functions (for test purpose).
+
+    function setTimeExtra(uint256 timeExtra_) external onlyTest {
+        timeExtra = timeExtra_;
+    }
+
+    function getNow() public view returns(uint256) {
+        return now + timeExtra;
     }
 
     // ** Pool config.
@@ -76,11 +89,13 @@ contract Pool is Initializable, PoolModel, NonReentrancy, OwnableUpgradeable {
 
     function createPool(
         uint256 waitDays_,
+        uint256 gapDays_,
         uint256 openDays_,
         string calldata name_
     ) external {
         require(waitDays_ >= MIN_WAIT_DAYS, "Not enough wait days");
-        require(openDays_ >= MIN_OPEN_DAYS, "Not enough wait days");
+        require(gapDays_ >= MIN_GAP_DAYS, "Not enough gap days");
+        require(openDays_ >= MIN_OPEN_DAYS, "Not enough open days");
 
         poolInfoArray.push(PoolInfo({
             totalShare: 0,
@@ -88,6 +103,7 @@ contract Pool is Initializable, PoolModel, NonReentrancy, OwnableUpgradeable {
             amountPerShare: AMOUNT_PER_SHARE,
             lastTime: 0,
             waitDays: waitDays_,
+            gapDays: gapDays_,
             openDays: openDays_,
             admin: _msgSender(),
             name: name_
@@ -104,7 +120,7 @@ contract Pool is Initializable, PoolModel, NonReentrancy, OwnableUpgradeable {
         require(poolInfo.lastTime == 0, "Already started");
         require(poolInfo.admin == _msgSender(), "Not admin");
 
-        poolInfo.lastTime = now;
+        poolInfo.lastTime = getNow();
     }
 
     // ** Regular operations.
@@ -117,11 +133,11 @@ contract Pool is Initializable, PoolModel, NonReentrancy, OwnableUpgradeable {
 
         if (poolInfo.lastTime > 0) {
             uint256 windowStartAt = poolInfo.lastTime.add(
-                poolInfo.waitDays.mul(1 days));
+                poolInfo.waitDays.add(poolInfo.gapDays).mul(1 days));
             uint256 windowCloseAt = windowStartAt.add(
                 poolInfo.openDays.mul(1 days));
 
-            require(now > windowStartAt && now < windowCloseAt,
+            require(getNow() > windowStartAt && getNow() < windowCloseAt,
                 "Should be in window");
         }
 
@@ -149,10 +165,10 @@ contract Pool is Initializable, PoolModel, NonReentrancy, OwnableUpgradeable {
         PoolInfo storage poolInfo = poolInfoArray[poolIndex_];
 
         if (poolInfo.lastTime > 0) {
-            uint256 windowStartAt = poolInfo.lastTime.add(
+            uint256 gapStartAt = poolInfo.lastTime.add(
                 poolInfo.waitDays.mul(1 days));
             
-            require(now < windowStartAt, "Should be before window");
+            require(getNow() < gapStartAt, "Should be before gap");
         }
 
         UserInfo storage userInfo = userInfoMap[poolIndex_][_msgSender()];
@@ -161,7 +177,7 @@ contract Pool is Initializable, PoolModel, NonReentrancy, OwnableUpgradeable {
 
         withdrawRequestMap[poolIndex_][_msgSender()].push(WithdrawRequest({
             share: share_,
-            time: now,
+            time: getNow(),
             executed: false
         }));
 
@@ -179,11 +195,11 @@ contract Pool is Initializable, PoolModel, NonReentrancy, OwnableUpgradeable {
 
         if (poolInfo.lastTime > 0) {
             uint256 windowStartAt = poolInfo.lastTime.add(
-                poolInfo.waitDays.mul(1 days));
+                poolInfo.waitDays.add(poolInfo.gapDays).mul(1 days));
             uint256 windowCloseAt = windowStartAt.add(
                 poolInfo.openDays.mul(1 days));
 
-            require(now > windowStartAt && now < windowCloseAt,
+            require(getNow() > windowStartAt && getNow() < windowCloseAt,
                 "Should be in window");
         }
 

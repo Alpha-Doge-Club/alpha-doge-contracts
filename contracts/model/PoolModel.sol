@@ -5,6 +5,9 @@ contract PoolModel {
 
     address public baseToken;
 
+    // For test.
+    bool public isTest;
+
     struct PoolInfo {
         // Base token amount
         uint256 totalShare;
@@ -14,6 +17,7 @@ contract PoolModel {
         // Basic information.
         uint256 lastTime;
         uint256 waitDays;
+        uint256 gapDays;
         uint256 openDays;
         address admin;
         string name;
@@ -44,4 +48,7 @@ contract PoolModel {
     // poolIndex => user => WithdrawRequest[]
     mapping(uint256 => mapping(address => WithdrawRequest[])) public
         withdrawRequestMap;
+
+    // Time control.
+    uint256 public timeExtra;
 }
