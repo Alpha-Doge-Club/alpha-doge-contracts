@@ -2,7 +2,9 @@
 pragma solidity 0.6.12;
 pragma experimental ABIEncoderV2;
 
-import "@openzeppelin/contracts/access/Ownable.sol";
+import "@openzeppelin/contracts-upgradeable/proxy/Initializable.sol";
+import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
+
 import "@openzeppelin/contracts/math/SafeMath.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/SafeERC20.sol";
@@ -10,7 +12,7 @@ import "@openzeppelin/contracts/token/ERC20/SafeERC20.sol";
 import "./model/PoolModel.sol";
 import "./common/NonReentrancy.sol";
 
-contract Pool is PoolModel, NonReentrancy, Ownable {
+contract Pool is Initializable, PoolModel, NonReentrancy, OwnableUpgradeable {
 
     using SafeERC20 for IERC20;
     using SafeMath for uint256;
@@ -41,6 +43,16 @@ contract Pool is PoolModel, NonReentrancy, Ownable {
         uint256 share_,
         uint256 amount_
     );
+
+    // ** Initialize.
+
+    constructor() public {
+        initialize(address(0));
+    }
+
+    function initialize(address baseToken_) public initializer {
+        baseToken = baseToken_;
+    }
 
     // ** Pool config.
 

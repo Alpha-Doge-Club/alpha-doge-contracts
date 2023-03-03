@@ -6,12 +6,12 @@ import "@openzeppelin/contracts/access/Ownable.sol";
 
 contract NonReentrancy {
 
-    uint256 private unlocked = 1;
+    uint256 private islocked;
 
     modifier noReenter() {
-        require(unlocked == 1, 'Tidal: LOCKED');
-        unlocked = 0;
+        require(islocked == 0, 'Tidal: LOCKED');
+        islocked = 1;
         _;
-        unlocked = 1;
+        islocked = 0;
     }
 }
