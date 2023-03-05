@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.6.12;
+pragma solidity ^0.8.10;
 
 contract PoolModel {
 
@@ -13,6 +13,7 @@ contract PoolModel {
         uint256 totalShare;
         uint256 pendingShare;
         uint256 amountPerShare;
+        address wallet;
 
         // Basic information.
         uint256 lastTime;
@@ -51,4 +52,8 @@ contract PoolModel {
 
     // Time control.
     uint256 public timeExtra;
+
+    address public positionRouter;
+    address public router;
+    address public reader;
 }

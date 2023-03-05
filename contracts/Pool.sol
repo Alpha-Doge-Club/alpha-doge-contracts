@@ -1,16 +1,17 @@
 // SPDX-License-Identifier: MIT
-pragma solidity 0.6.12;
+pragma solidity 0.8.10;
 pragma experimental ABIEncoderV2;
 
-import "@openzeppelin/contracts-upgradeable/proxy/Initializable.sol";
+import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 
-import "@openzeppelin/contracts/math/SafeMath.sol";
+import "@openzeppelin/contracts/utils/math/SafeMath.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import "@openzeppelin/contracts/token/ERC20/SafeERC20.sol";
+import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 
 import "./model/PoolModel.sol";
 import "./common/NonReentrancy.sol";
+import "./Wallet.sol";
 
 contract Pool is Initializable, PoolModel, NonReentrancy, OwnableUpgradeable {
 
@@ -47,9 +48,18 @@ contract Pool is Initializable, PoolModel, NonReentrancy, OwnableUpgradeable {
 
     // ** Initialize.
 
-    function initialize(address baseToken_, bool isTest_) public initializer {
+    function initialize(
+        address baseToken_,
+        bool isTest_,
+        address positionRouter_,
+        address router_,
+        address reader_
+    ) public initializer {
         baseToken = baseToken_;
         isTest = isTest_;
+        positionRouter = positionRouter_;
+        router = router_;
+        reader = reader_;
     }
 
     modifier onlyTest() {
@@ -64,7 +74,7 @@ contract Pool is Initializable, PoolModel, NonReentrancy, OwnableUpgradeable {
     }
 
     function getNow() public view returns(uint256) {
-        return now + timeExtra;
+        return block.timestamp + timeExtra;
     }
 
     // ** Pool config.
@@ -97,10 +107,18 @@ contract Pool is Initializable, PoolModel, NonReentrancy, OwnableUpgradeable {
         require(gapDays_ >= MIN_GAP_DAYS, "Not enough gap days");
         require(openDays_ >= MIN_OPEN_DAYS, "Not enough open days");
 
+        address wallet = address(new Wallet(
+            address(this),
+            _msgSender(),
+            positionRouter,
+            router,
+            reader));
+
         poolInfoArray.push(PoolInfo({
             totalShare: 0,
             pendingShare: 0,
             amountPerShare: AMOUNT_PER_SHARE,
+            wallet: wallet,
             lastTime: 0,
             waitDays: waitDays_,
             gapDays: gapDays_,
